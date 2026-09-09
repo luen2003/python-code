@@ -31,7 +31,7 @@ COLOR = (255, 140, 0)
 
 BG_COLOR = (255, 255, 255)
 
-OUTPUT_FILE = "video_intro.mp4"
+OUTPUT_FILE = "intro_video.mp4"
 
 
 # =========================================================

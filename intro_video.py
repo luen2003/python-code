@@ -343,7 +343,44 @@ def draw_cluster(frame, cluster):
     )
 
     # =====================================================
-    # NỐI 3 ĐIỂM
+    # 1. TẠO LỚP OVERLAY ĐỂ TÔ MÀU TRONG SUỐT
+    # =====================================================
+
+    overlay = frame.copy()
+
+    # Xanh dương nhạt
+    # OpenCV dùng BGR
+    FILL_COLOR = (255, 220, 170)
+
+    # Tô tam giác
+    cv2.fillPoly(
+        overlay,
+        [
+            np.array(
+                [pt1, pt2, pt3],
+                dtype=np.int32
+            )
+        ],
+        FILL_COLOR
+    )
+
+    # =====================================================
+    # 2. TRỘN OVERLAY VỚI FRAME GỐC
+    # =====================================================
+
+    ALPHA = 0.52
+
+    cv2.addWeighted(
+        overlay,
+        ALPHA,
+        frame,
+        1 - ALPHA,
+        0,
+        frame
+    )
+
+    # =====================================================
+    # 3. VẼ 3 CẠNH TAM GIÁC
     # =====================================================
 
     cv2.line(
@@ -374,7 +411,7 @@ def draw_cluster(frame, cluster):
     )
 
     # =====================================================
-    # VẼ 3 ĐIỂM
+    # 4. VẼ 3 ĐIỂM
     # =====================================================
 
     for p in cluster:
@@ -392,6 +429,7 @@ def draw_cluster(frame, cluster):
             -1,
             cv2.LINE_AA
         )
+
 
 
 # =========================================================

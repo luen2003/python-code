@@ -92,4 +92,4 @@ sound.export(mp3_file, format="mp3")
 # Xóa WAV tạm
 os.remove(wav_file)
 
-print("✅ Đã tạo bản nhạc phức tạp hơn:", mp3_file)
+print("Đã tạo bản nhạc phức tạp hơn:", mp3_file)

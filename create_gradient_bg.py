@@ -61,7 +61,7 @@ def generate_insta_bg_final(filename="bg-1.png", width=1920, height=1080, is_jpe
         img.save(filename, "JPEG", quality=98, subsampling=0)
     else:
         img.save(filename, "PNG", quality=100)
-    print(f"✅ Đã xuất ảnh thành công: {filename} ({width}x{height})")
+    print(f"Đã xuất ảnh thành công: {filename} ({width}x{height})")
 
 if __name__ == "__main__":
     generate_insta_bg_final("bg-1.png", width=1920, height=1080, is_jpeg=False)

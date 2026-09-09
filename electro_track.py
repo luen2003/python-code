@@ -67,4 +67,4 @@ sound.export(mp3_file, format="mp3")
 # Xóa file WAV tạm
 os.remove(wav_file)
 
-print("✅ Đã tạo bản nhạc:", mp3_file)
+print("Đã tạo bản nhạc:", mp3_file)

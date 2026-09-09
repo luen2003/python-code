@@ -89,4 +89,4 @@ sound.export(mp3_file, format="mp3")
 # Xóa WAV
 os.remove(wav_file)
 
-print("✅ Đã tạo bản nhạc EDM vui nhộn:", mp3_file)
+print("Đã tạo bản nhạc EDM vui nhộn:", mp3_file)

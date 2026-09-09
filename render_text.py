@@ -85,4 +85,4 @@ for i in range(frames):
     out.write(cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR))
 
 out.release()
-print("✅ Video 'ulmind_animation.mp4' created")
+print("Video 'ulmind_animation.mp4' created")

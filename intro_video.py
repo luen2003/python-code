@@ -3,11 +3,6 @@ import numpy as np
 import random
 import math
 
-
-# =========================================================
-# CẤU HÌNH VIDEO
-# =========================================================
-
 WIDTH = 1920
 HEIGHT = 1080
 
@@ -16,12 +11,7 @@ DURATION = 8
 
 OUTPUT_FILE = "intro_video.mp4"
 
-
-# =========================================================
-# CẤU HÌNH CỤM CHÍNH
-# =========================================================
-
-NUM_POINTS = 72
+NUM_POINTS = 64
 
 POINTS_PER_CLUSTER = 3
 NUM_CLUSTERS = NUM_POINTS // POINTS_PER_CLUSTER
@@ -31,37 +21,21 @@ OUTER_POINT_RADIUS = 5
 
 LINE_WIDTH = 2
 
-
-# =========================================================
-# PHÂN BỐ
-# =========================================================
-
 CENTER_X = WIDTH / 2
 CENTER_Y = HEIGHT / 2
 
-DISTRIBUTION_X = 620
-DISTRIBUTION_Y = 340
+DISTRIBUTION_X = 680
+DISTRIBUTION_Y = 380
 
-MIN_CLUSTER_DISTANCE = 125
-
+MIN_CLUSTER_DISTANCE = 175 
 MAX_ATTEMPTS = 50000
 
-
-# =========================================================
-# KẾT NỐI CỤM CHÍNH
-# =========================================================
-
-MAX_CONNECTION_DISTANCE = 430
+MAX_CONNECTION_DISTANCE = 380
 
 MIN_EXTRA_CONNECTIONS = 0
 MAX_EXTRA_CONNECTIONS = 1
 
-EXTRA_CONNECTION_PROBABILITY = 0.35
-
-
-# =========================================================
-# CHUYỂN ĐỘNG RIÊNG CỦA CÁC ĐIỂM (NGOÀI)
-# =========================================================
+EXTRA_CONNECTION_PROBABILITY = 0.12
 
 OUTER_POINT_MIN_SPEED = 0.45
 OUTER_POINT_MAX_SPEED = 1.5
@@ -72,12 +46,7 @@ OUTER_POINT_MAX_RADIUS_MAX = 65
 OUTER_POINT_WANDER_FORCE = 0.018
 OUTER_POINT_RETURN_FORCE = 0.20
 
-
-# =========================================================
-# CẤU HÌNH NHÓM ĐƯỜNG GẤP KHÚC (4 CHẤM)
-# =========================================================
-
-NUM_DOT_GROUPS = 8
+NUM_DOT_GROUPS = 4
 
 DOT_GROUP_MIN_SPEED = 0.25
 DOT_GROUP_MAX_SPEED = 0.75
@@ -87,11 +56,6 @@ DOT_GROUP_WAVE_MAX = 0.045
 
 DOT_GROUP_SWAY_MIN = 3.0
 DOT_GROUP_SWAY_MAX = 9.0
-
-
-# =========================================================
-# MÀU
-# =========================================================
 
 COLOR = (
     255,
@@ -107,11 +71,6 @@ BG_COLOR = (
     255
 )
 
-
-# =========================================================
-# MÀU FILL
-# =========================================================
-
 FILL_COLOR = (
     255,
     220,
@@ -120,18 +79,8 @@ FILL_COLOR = (
 
 FILL_ALPHA = 0.58
 
-
-# =========================================================
-# FILL CỤM CHÍNH
-# =========================================================
-
-MIN_FILLED_CLUSTERS = 15
-MAX_FILLED_CLUSTERS = 18
-
-
-# =========================================================
-# CHUYỂN ĐỘNG CỤM CHÍNH
-# =========================================================
+MIN_FILLED_CLUSTERS = 7
+MAX_FILLED_CLUSTERS = 10
 
 MIN_SPEED = 0.45
 MAX_SPEED = 2.0
@@ -139,926 +88,300 @@ MAX_SPEED = 2.0
 CLUSTER_MAX_RADIUS_MIN = 38
 CLUSTER_MAX_RADIUS_MAX = 62
 
-
-# =========================================================
-# TẠO TÂM CỤM CHÍNH
-# =========================================================
-
 def create_cluster_centers():
-
     centers = []
-
     attempts = 0
+    margin = 120
 
-    margin = 110
-
-    while (
-        len(centers) < NUM_CLUSTERS
-        and attempts < MAX_ATTEMPTS
-    ):
-
+    while len(centers) < NUM_CLUSTERS and attempts < MAX_ATTEMPTS:
         attempts += 1
 
-        x = random.gauss(
-            CENTER_X,
-            DISTRIBUTION_X / 2.4
-        )
+        x = random.gauss(CENTER_X, DISTRIBUTION_X / 2.2)
+        y = random.gauss(CENTER_Y, DISTRIBUTION_Y / 2.2)
 
-        y = random.gauss(
-            CENTER_Y,
-            DISTRIBUTION_Y / 2.4
-        )
-
-        if x < margin:
-            continue
-
-        if x > WIDTH - margin:
-            continue
-
-        if y < margin:
-            continue
-
-        if y > HEIGHT - margin:
+        if x < margin or x > WIDTH - margin or y < margin or y > HEIGHT - margin:
             continue
 
         valid = True
-
         for cx, cy in centers:
-
-            distance = math.hypot(
-                x - cx,
-                y - cy
-            )
-
-            if distance < MIN_CLUSTER_DISTANCE:
-
+            if math.hypot(x - cx, y - cy) < MIN_CLUSTER_DISTANCE:
                 valid = False
                 break
 
         if valid:
+            centers.append((x, y))
 
-            centers.append(
-                (
-                    x,
-                    y
-                )
-            )
-
-    # =====================================================
     # FALLBACK
-    # =====================================================
-
     if len(centers) < NUM_CLUSTERS:
-
         attempts = 0
-
-        while (
-            len(centers) < NUM_CLUSTERS
-            and attempts < MAX_ATTEMPTS
-        ):
-
+        while len(centers) < NUM_CLUSTERS and attempts < MAX_ATTEMPTS:
             attempts += 1
-
-            x = random.uniform(
-                150,
-                WIDTH - 150
-            )
-
-            y = random.uniform(
-                120,
-                HEIGHT - 120
-            )
+            x = random.uniform(150, WIDTH - 150)
+            y = random.uniform(120, HEIGHT - 120)
 
             valid = True
-
             for cx, cy in centers:
-
-                distance = math.hypot(
-                    x - cx,
-                    y - cy
-                )
-
-                if distance < 105:
-
+                if math.hypot(x - cx, y - cy) < 130:
                     valid = False
                     break
 
             if valid:
-
-                centers.append(
-                    (
-                        x,
-                        y
-                    )
-                )
+                centers.append((x, y))
 
     if len(centers) != NUM_CLUSTERS:
-
-        raise RuntimeError(
-            "Không thể tạo đủ cụm chính."
-        )
+        raise RuntimeError("Không thể tạo đủ cụm chính.")
 
     return centers
 
-
-# =========================================================
-# TẠO CỤM CHÍNH
-# =========================================================
-
 def create_clusters():
-
     clusters = []
-
     centers = create_cluster_centers()
 
-    number_filled = random.randint(
-        MIN_FILLED_CLUSTERS,
-        MAX_FILLED_CLUSTERS
-    )
-
-    filled_ids = set(
-        random.sample(
-            range(NUM_CLUSTERS),
-            number_filled
-        )
-    )
+    number_filled = random.randint(MIN_FILLED_CLUSTERS, MAX_FILLED_CLUSTERS)
+    filled_ids = set(random.sample(range(NUM_CLUSTERS), number_filled))
 
     for cluster_id in range(NUM_CLUSTERS):
-
-        center_x = centers[cluster_id][0]
-        center_y = centers[cluster_id][1]
-
+        center_x, center_y = centers[cluster_id]
         points = []
-
-        base_rotation = random.uniform(
-            0,
-            math.pi * 2
-        )
+        base_rotation = random.uniform(0, math.pi * 2)
 
         for i in range(POINTS_PER_CLUSTER):
+            angle = base_rotation + i * 2 * math.pi / 3 + random.uniform(-0.20, 0.20)
+            radius = random.uniform(24, 42)
 
-            angle = (
-                base_rotation
-                + i * 2 * math.pi / 3
-            )
+            x = center_x + math.cos(angle) * radius
+            y = center_y + math.sin(angle) * radius
 
-            angle += random.uniform(
-                -0.20,
-                0.20
-            )
-
-            radius = random.uniform(
-                24,
-                42
-            )
-
-            x = (
-                center_x
-                + math.cos(angle)
-                * radius
-            )
-
-            y = (
-                center_y
-                + math.sin(angle)
-                * radius
-            )
-
-            # -------------------------------------------------
-            # VẬN TỐC
-            # -------------------------------------------------
-
-            speed = random.uniform(
-                MIN_SPEED,
-                MAX_SPEED
-            )
-
-            direction = random.uniform(
-                0,
-                math.pi * 2
-            )
-
-            vx = (
-                math.cos(direction)
-                * speed
-            )
-
-            vy = (
-                math.sin(direction)
-                * speed
-            )
-
-            # -------------------------------------------------
-            # DAO ĐỘNG
-            # -------------------------------------------------
-
-            phase = random.uniform(
-                0,
-                math.pi * 2
-            )
-
-            phase_speed = random.uniform(
-                0.008,
-                0.018
-            )
+            speed = random.uniform(MIN_SPEED, MAX_SPEED)
+            direction = random.uniform(0, math.pi * 2)
 
             points.append({
-
                 "x": x,
                 "y": y,
-
                 "center_x": center_x,
                 "center_y": center_y,
-
-                "vx": vx,
-                "vy": vy,
-
-                "phase": phase,
-                "phase_speed": phase_speed,
-
-                "max_radius": random.uniform(
-                    CLUSTER_MAX_RADIUS_MIN,
-                    CLUSTER_MAX_RADIUS_MAX
-                )
+                "vx": math.cos(direction) * speed,
+                "vy": math.sin(direction) * speed,
+                "phase": random.uniform(0, math.pi * 2),
+                "phase_speed": random.uniform(0.008, 0.018),
+                "max_radius": random.uniform(CLUSTER_MAX_RADIUS_MIN, CLUSTER_MAX_RADIUS_MAX)
             })
 
         clusters.append({
-
             "points": points,
-
             "center_x": center_x,
             "center_y": center_y,
-
-            "filled": (
-                cluster_id in filled_ids
-            )
+            "filled": (cluster_id in filled_ids)
         })
 
     return clusters
 
-
-# =========================================================
-# KHOẢNG CÁCH 2 CỤM
-# =========================================================
-
-def cluster_distance(
-    clusters,
-    a,
-    b
-):
-
-    dx = (
-        clusters[a]["center_x"]
-        - clusters[b]["center_x"]
-    )
-
-    dy = (
-        clusters[a]["center_y"]
-        - clusters[b]["center_y"]
-    )
-
+def cluster_distance(clusters, a, b):
     return math.hypot(
-        dx,
-        dy
+        clusters[a]["center_x"] - clusters[b]["center_x"],
+        clusters[a]["center_y"] - clusters[b]["center_y"]
     )
 
 
-# =========================================================
-# KIỂM TRA CONNECTION
-# =========================================================
-
-def connection_exists(
-    connections,
-    a,
-    b
-):
-
+def connection_exists(connections, a, b):
     for connection in connections:
-
-        ca = connection["cluster_a"]
-        cb = connection["cluster_b"]
-
-        if (
-            ca == a and cb == b
-        ) or (
-            ca == b and cb == a
-        ):
-
+        ca, cb = connection["cluster_a"], connection["cluster_b"]
+        if (ca == a and cb == b) or (ca == b and cb == a):
             return True
-
     return False
 
-
-# =========================================================
-# THÊM CONNECTION
-# =========================================================
-
-def add_connection(
-    connections,
-    cluster_a,
-    cluster_b
-):
-
-    if cluster_a == cluster_b:
+def add_connection(connections, cluster_a, cluster_b):
+    if cluster_a == cluster_b or connection_exists(connections, cluster_a, cluster_b):
         return
 
-    if connection_exists(
-        connections,
-        cluster_a,
-        cluster_b
-    ):
-        return
+    point_a = random.randrange(POINTS_PER_CLUSTER)
+    point_b = random.randrange(POINTS_PER_CLUSTER)
 
-    number_of_points = random.choice(
-        [
-            1,
-            2
-        ]
-    )
-
-    points_a = random.sample(
-        range(POINTS_PER_CLUSTER),
-        number_of_points
-    )
-
-    points_b = random.sample(
-        range(POINTS_PER_CLUSTER),
-        number_of_points
-    )
-
-    for i in range(number_of_points):
-
-        connections.append({
-
-            "cluster_a": cluster_a,
-            "point_a": points_a[i],
-
-            "cluster_b": cluster_b,
-            "point_b": points_b[i]
-        })
-
-
-# =========================================================
-# TẠO MẠNG CHÍNH LIÊN THÔNG
-# =========================================================
+    connections.append({
+        "cluster_a": cluster_a,
+        "point_a": point_a,
+        "cluster_b": cluster_b,
+        "point_b": point_b
+    })
 
 def create_connections(clusters):
-
     connections = []
-
     connected = {0}
-
-    remaining = set(
-        range(
-            1,
-            NUM_CLUSTERS
-        )
-    )
+    remaining = set(range(1, NUM_CLUSTERS))
 
     while remaining:
-
         best_pair = None
         best_distance = float("inf")
 
         for a in connected:
-
             for b in remaining:
-
-                distance = cluster_distance(
-                    clusters,
-                    a,
-                    b
-                )
-
+                distance = cluster_distance(clusters, a, b)
                 if distance < best_distance:
-
                     best_distance = distance
-
-                    best_pair = (
-                        a,
-                        b
-                    )
+                    best_pair = (a, b)
 
         if best_pair is None:
             break
 
         a, b = best_pair
-
-        add_connection(
-            connections,
-            a,
-            b
-        )
-
+        add_connection(connections, a, b)
         connected.add(b)
         remaining.remove(b)
 
     if len(connected) != NUM_CLUSTERS:
+        raise RuntimeError("Mạng chính không liên thông.")
 
-        raise RuntimeError(
-            "Mạng chính không liên thông."
-        )
-
-    # =====================================================
-    # CONNECTION PHỤ
-    # =====================================================
-
+    # CONNECTION PHỤ (RẤT ÍT)
     for cluster_a in range(NUM_CLUSTERS):
-
-        if (
-            random.random()
-            > EXTRA_CONNECTION_PROBABILITY
-        ):
+        if random.random() > EXTRA_CONNECTION_PROBABILITY:
             continue
 
         candidates = []
-
         for cluster_b in range(NUM_CLUSTERS):
-
-            if cluster_a == cluster_b:
+            if cluster_a == cluster_b or connection_exists(connections, cluster_a, cluster_b):
                 continue
 
-            if connection_exists(
-                connections,
-                cluster_a,
-                cluster_b
-            ):
-                continue
-
-            distance = cluster_distance(
-                clusters,
-                cluster_a,
-                cluster_b
-            )
-
+            distance = cluster_distance(clusters, cluster_a, cluster_b)
             if distance <= MAX_CONNECTION_DISTANCE:
-
-                candidates.append(
-                    (
-                        cluster_b,
-                        distance
-                    )
-                )
+                candidates.append((cluster_b, distance))
 
         if not candidates:
             continue
 
         random.shuffle(candidates)
+        candidates.sort(key=lambda item: item[1] * random.uniform(0.85, 1.15))
 
-        candidates.sort(
-            key=lambda item:
-                item[1]
-                * random.uniform(
-                    0.85,
-                    1.15
-                )
-        )
-
-        number_extra = random.randint(
-            MIN_EXTRA_CONNECTIONS,
-            MAX_EXTRA_CONNECTIONS
-        )
-
-        for cluster_b, distance in candidates[
-            :number_extra
-        ]:
-
-            add_connection(
-                connections,
-                cluster_a,
-                cluster_b
-            )
+        number_extra = random.randint(MIN_EXTRA_CONNECTIONS, MAX_EXTRA_CONNECTIONS)
+        for cluster_b, _ in candidates[:number_extra]:
+            add_connection(connections, cluster_a, cluster_b)
 
     return connections
 
-
-# =========================================================
-# TẠO NHÓM ĐƯỜNG GẤP KHÚC (4 CHẤM) NẰM Ở GIỮA
-# =========================================================
-
 def create_dot_groups(clusters):
-
     dot_groups = []
-
     attempts = 0
     max_attempts = 5000
+    margin = 160
 
-    margin = 150
-
-    while (
-        len(dot_groups) < NUM_DOT_GROUPS
-        and attempts < max_attempts
-    ):
+    while len(dot_groups) < NUM_DOT_GROUPS and attempts < max_attempts:
         attempts += 1
 
-        # =================================================
-        # VỊ TRÍ TÂM NHÓM - TẬP TRUNG Ở GIỮA
-        # =================================================
+        center_x = random.gauss(CENTER_X, DISTRIBUTION_X / 2.8)
+        center_y = random.gauss(CENTER_Y, DISTRIBUTION_Y / 2.8)
 
-        center_x = random.gauss(
-            CENTER_X,
-            DISTRIBUTION_X / 3.0
-        )
-        
-        center_y = random.gauss(
-            CENTER_Y,
-            DISTRIBUTION_Y / 3.0
-        )
-        
-        if center_x < margin:
-            continue
-            
-        if center_x > WIDTH - margin:
-            continue
-            
-        if center_y < margin:
-            continue
-            
-        if center_y > HEIGHT - margin:
+        if center_x < margin or center_x > WIDTH - margin or center_y < margin or center_y > HEIGHT - margin:
             continue
 
-        # Tránh đè sát lên các cụm chính
         too_close = False
         for cluster in clusters:
-            dist = math.hypot(
-                center_x - cluster["center_x"],
-                center_y - cluster["center_y"]
-            )
-            if dist < 120:
+            if math.hypot(center_x - cluster["center_x"], center_y - cluster["center_y"]) < 145:
                 too_close = True
                 break
-        
+
         if too_close:
             continue
 
-        # =================================================
-        # VẬN TỐC TÂM NHÓM
-        # =================================================
-
-        direction = random.uniform(
-            0,
-            math.pi * 2
-        )
-        speed = random.uniform(
-            DOT_GROUP_MIN_SPEED,
-            DOT_GROUP_MAX_SPEED
-        )
-
-        vx = (
-            math.cos(direction)
-            * speed
-        )
-        vy = (
-            math.sin(direction)
-            * speed
-        )
-
-        # =================================================
-        # DAO ĐỘNG TÂM
-        # =================================================
-
-        phase = random.uniform(
-            0,
-            math.pi * 2
-        )
-
-        phase_speed = random.uniform(
-            DOT_GROUP_WAVE_MIN,
-            DOT_GROUP_WAVE_MAX
-        )
-
-        sway_amount = random.uniform(
-            DOT_GROUP_SWAY_MIN,
-            DOT_GROUP_SWAY_MAX
-        )
-
-        sway_direction = random.uniform(
-            0,
-            math.pi * 2
-        )
-
-        # =================================================
-        # TẠO 4 CHẤM (POINTS)
-        # =================================================
+        direction = random.uniform(0, math.pi * 2)
+        speed = random.uniform(DOT_GROUP_MIN_SPEED, DOT_GROUP_MAX_SPEED)
 
         points = []
-
         for i in range(4):
+            point_radius = random.uniform(40, 75)
+            point_angle = (i * 2 * math.pi / 4) + random.uniform(-0.3, 0.3)
 
-            point_radius = random.uniform(
-                40,
-                80
-            )
+            px = center_x + math.cos(point_angle) * point_radius
+            py = center_y + math.sin(point_angle) * point_radius
 
-            point_angle = (
-                i
-                * 2
-                * math.pi
-                / 4
-            ) + random.uniform(-0.3, 0.3)
-
-            px = (
-                center_x
-                + math.cos(point_angle)
-                * point_radius
-            )
-            py = (
-                center_y
-                + math.sin(point_angle)
-                * point_radius
-            )
-
-            # Vận tốc riêng cho chấm
-            p_speed = random.uniform(
-                OUTER_POINT_MIN_SPEED,
-                OUTER_POINT_MAX_SPEED
-            )
-            p_dir = random.uniform(
-                0,
-                math.pi * 2
-            )
-
-            pvx = math.cos(p_dir) * p_speed
-            pvy = math.sin(p_dir) * p_speed
+            p_speed = random.uniform(OUTER_POINT_MIN_SPEED, OUTER_POINT_MAX_SPEED)
+            p_dir = random.uniform(0, math.pi * 2)
 
             points.append({
-
                 "x": px,
                 "y": py,
-
-                "vx": pvx,
-                "vy": pvy,
-
-                "phase": random.uniform(
-                    0,
-                    math.pi * 2
-                ),
-                "phase_speed": random.uniform(
-                    0.008,
-                    0.018
-                ),
+                "vx": math.cos(p_dir) * p_speed,
+                "vy": math.sin(p_dir) * p_speed,
+                "phase": random.uniform(0, math.pi * 2),
+                "phase_speed": random.uniform(0.008, 0.018),
                 "max_radius": point_radius * 1.2
-
             })
 
-        # =================================================
         # TÌM TAM GIÁC GẦN NHẤT CỐ ĐỊNH CHO NHÓM NÀY
-        # =================================================
-
         min_dist = float("inf")
         best_dot_idx = -1
         best_cluster_idx = -1
         best_point_idx = -1
 
         for d_idx, p in enumerate(points):
-
             for c_idx, cluster in enumerate(clusters):
-
                 for cp_idx, cp in enumerate(cluster["points"]):
-
-                    dist = math.hypot(
-                        p["x"] - cp["x"],
-                        p["y"] - cp["y"]
-                    )
-
+                    dist = math.hypot(p["x"] - cp["x"], p["y"] - cp["y"])
                     if dist < min_dist:
-
                         min_dist = dist
                         best_dot_idx = d_idx
                         best_cluster_idx = c_idx
                         best_point_idx = cp_idx
 
-        # =================================================
-        # LƯU THÔNG TIN NHÓM
-        # =================================================
-
         dot_groups.append({
-
             "center_x": center_x,
             "center_y": center_y,
-
-            "vx": vx,
-            "vy": vy,
-
-            "phase": phase,
-            "phase_speed": phase_speed,
-
-            "sway_amount": sway_amount,
-            "sway_direction": sway_direction,
-
+            "vx": math.cos(direction) * speed,
+            "vy": math.sin(direction) * speed,
+            "phase": random.uniform(0, math.pi * 2),
+            "phase_speed": random.uniform(DOT_GROUP_WAVE_MIN, DOT_GROUP_WAVE_MAX),
+            "sway_amount": random.uniform(DOT_GROUP_SWAY_MIN, DOT_GROUP_SWAY_MAX),
+            "sway_direction": random.uniform(0, math.pi * 2),
             "points": points,
-
             "best_dot_idx": best_dot_idx,
             "best_cluster_idx": best_cluster_idx,
             "best_point_idx": best_point_idx
-
         })
 
     return dot_groups
 
-
-# =========================================================
-# UPDATE CỤM CHÍNH
-# =========================================================
-
-def update_cluster(
-    cluster,
-    frame_number
-):
-
+def update_cluster(cluster, frame_number):
     for p in cluster["points"]:
-
-        # =================================================
-        # DI CHUYỂN
-        # =================================================
-
         p["x"] += p["vx"]
         p["y"] += p["vy"]
 
-        # =================================================
-        # DAO ĐỘNG
-        # =================================================
+        p["phase"] += p["phase_speed"]
+        p["vx"] += math.sin(p["phase"]) * 0.018
+        p["vy"] += math.cos(p["phase"]) * 0.018
 
-        p["phase"] += (
-            p["phase_speed"]
-        )
-
-        p["vx"] += (
-            math.sin(
-                p["phase"]
-            )
-            * 0.018
-        )
-
-        p["vy"] += (
-            math.cos(
-                p["phase"]
-            )
-            * 0.018
-        )
-
-        # =================================================
-        # GIỚI HẠN TỐC ĐỘ
-        # =================================================
-
-        speed = math.hypot(
-            p["vx"],
-            p["vy"]
-        )
-
+        speed = math.hypot(p["vx"], p["vy"])
         if speed > MAX_SPEED:
-
-            p["vx"] = (
-                p["vx"]
-                / speed
-                * MAX_SPEED
-            )
-
-            p["vy"] = (
-                p["vy"]
-                / speed
-                * MAX_SPEED
-            )
-
+            p["vx"] = (p["vx"] / speed) * MAX_SPEED
+            p["vy"] = (p["vy"] / speed) * MAX_SPEED
         elif speed < MIN_SPEED:
-
             if speed == 0:
-
-                direction = random.uniform(
-                    0,
-                    math.pi * 2
-                )
-
-                p["vx"] = math.cos(
-                    direction
-                )
-
-                p["vy"] = math.sin(
-                    direction
-                )
-
+                direction = random.uniform(0, math.pi * 2)
+                p["vx"] = math.cos(direction)
+                p["vy"] = math.sin(direction)
             else:
+                p["vx"] = (p["vx"] / speed) * MIN_SPEED
+                p["vy"] = (p["vy"] / speed) * MIN_SPEED
 
-                p["vx"] = (
-                    p["vx"]
-                    / speed
-                    * MIN_SPEED
-                )
+        dx = p["x"] - p["center_x"]
+        dy = p["y"] - p["center_y"]
+        distance = math.hypot(dx, dy)
 
-                p["vy"] = (
-                    p["vy"]
-                    / speed
-                    * MIN_SPEED
-                )
-
-        # =================================================
-        # KÉO VỀ TÂM
-        # =================================================
-
-        dx = (
-            p["x"]
-            - p["center_x"]
-        )
-
-        dy = (
-            p["y"]
-            - p["center_y"]
-        )
-
-        distance = math.hypot(
-            dx,
-            dy
-        )
-
-        if distance > p["max_radius"]:
-
-            if distance > 0:
-
-                nx = dx / distance
-                ny = dy / distance
-
-                force = 0.20
-
-                p["vx"] -= (
-                    nx * force
-                )
-
-                p["vy"] -= (
-                    ny * force
-                )
+        if distance > p["max_radius"] and distance > 0:
+            p["vx"] -= (dx / distance) * 0.20
+            p["vy"] -= (dy / distance) * 0.20
 
 
-# =========================================================
-# UPDATE NHÓM ĐƯỜNG GẤP KHÚC
-# =========================================================
+def update_dot_group(group):
+    group["phase"] += group["phase_speed"]
+    group["center_x"] += group["vx"]
+    group["center_y"] += group["vy"]
 
-def update_dot_group(
-    group
-):
-
-    # =====================================================
-    # PHASE TÂM
-    # =====================================================
-
-    group["phase"] += (
-        group["phase_speed"]
-    )
-
-    # =====================================================
-    # DI CHUYỂN TÂM
-    # =====================================================
-
-    group["center_x"] += (
-        group["vx"]
-    )
-
-    group["center_y"] += (
-        group["vy"]
-    )
-
-    # =====================================================
-    # DAO ĐỘNG TÂM
-    # =====================================================
-
-    sway = (
-        math.sin(
-            group["phase"]
-        )
-        * group["sway_amount"]
-    )
-
-    sway_x = (
-        math.cos(
-            group["sway_direction"]
-        )
-        * sway
-    )
-
-    sway_y = (
-        math.sin(
-            group["sway_direction"]
-        )
-        * sway
-    )
-
-    group["center_x"] += (
-        sway_x * 0.12
-    )
-
-    group["center_y"] += (
-        sway_y * 0.12
-    )
-
-    # =====================================================
-    # GIỚI HẠN TÂM (BOUNCE)
-    # =====================================================
+    sway = math.sin(group["phase"]) * group["sway_amount"]
+    group["center_x"] += math.cos(group["sway_direction"]) * sway * 0.12
+    group["center_y"] += math.sin(group["sway_direction"]) * sway * 0.12
 
     margin = 100
-
     if group["center_x"] < margin:
         group["center_x"] = margin
         group["vx"] = abs(group["vx"])
-
     elif group["center_x"] > WIDTH - margin:
         group["center_x"] = WIDTH - margin
         group["vx"] = -abs(group["vx"])
@@ -1066,224 +389,82 @@ def update_dot_group(
     if group["center_y"] < margin:
         group["center_y"] = margin
         group["vy"] = abs(group["vy"])
-
     elif group["center_y"] > HEIGHT - margin:
         group["center_y"] = HEIGHT - margin
         group["vy"] = -abs(group["vy"])
 
-    # =====================================================
-    # UPDATE 4 CHẤM RIÊNG
-    # =====================================================
-
     for p in group["points"]:
-
         p["x"] += p["vx"]
         p["y"] += p["vy"]
 
-        p["phase"] += (
-            p["phase_speed"]
-        )
+        p["phase"] += p["phase_speed"]
+        p["vx"] += math.sin(p["phase"]) * OUTER_POINT_WANDER_FORCE
+        p["vy"] += math.cos(p["phase"]) * OUTER_POINT_WANDER_FORCE
 
-        p["vx"] += (
-            math.sin(
-                p["phase"]
-            )
-            * OUTER_POINT_WANDER_FORCE
-        )
-
-        p["vy"] += (
-            math.cos(
-                p["phase"]
-            )
-            * OUTER_POINT_WANDER_FORCE
-        )
-
-        speed = math.hypot(
-            p["vx"],
-            p["vy"]
-        )
-
+        speed = math.hypot(p["vx"], p["vy"])
         if speed > OUTER_POINT_MAX_SPEED:
             p["vx"] = (p["vx"] / speed) * OUTER_POINT_MAX_SPEED
             p["vy"] = (p["vy"] / speed) * OUTER_POINT_MAX_SPEED
+        elif speed < OUTER_POINT_MIN_SPEED and speed > 0:
+            p["vx"] = (p["vx"] / speed) * OUTER_POINT_MIN_SPEED
+            p["vy"] = (p["vy"] / speed) * OUTER_POINT_MIN_SPEED
 
-        elif speed < OUTER_POINT_MIN_SPEED:
-            if speed > 0:
-                p["vx"] = (p["vx"] / speed) * OUTER_POINT_MIN_SPEED
-                p["vy"] = (p["vy"] / speed) * OUTER_POINT_MIN_SPEED
-
-        # KÉO VỀ TÂM NHÓM
         dx = p["x"] - group["center_x"]
         dy = p["y"] - group["center_y"]
-
         distance = math.hypot(dx, dy)
 
-        if distance > p["max_radius"]:
+        if distance > p["max_radius"] and distance > 0:
+            p["vx"] -= (dx / distance) * OUTER_POINT_RETURN_FORCE
+            p["vy"] -= (dy / distance) * OUTER_POINT_RETURN_FORCE
 
-            if distance > 0:
-
-                nx = dx / distance
-                ny = dy / distance
-
-                force = OUTER_POINT_RETURN_FORCE
-
-                p["vx"] -= (nx * force)
-                p["vy"] -= (ny * force)
-
-
-# =========================================================
-# VẼ CONNECTION CỤM CHÍNH
-# =========================================================
-
-def draw_connections(
-    frame,
-    clusters,
-    connections
-):
-
+def draw_connections(frame, clusters, connections):
     for connection in connections:
-
-        cluster_a = connection[
-            "cluster_a"
-        ]
-
-        point_a = connection[
-            "point_a"
-        ]
-
-        cluster_b = connection[
-            "cluster_b"
-        ]
-
-        point_b = connection[
-            "point_b"
-        ]
-
-        p1 = clusters[
-            cluster_a
-        ]["points"][
-            point_a
-        ]
-
-        p2 = clusters[
-            cluster_b
-        ]["points"][
-            point_b
-        ]
-
-        pt1 = (
-            int(p1["x"]),
-            int(p1["y"])
-        )
-
-        pt2 = (
-            int(p2["x"]),
-            int(p2["y"])
-        )
-
+        p1 = clusters[connection["cluster_a"]]["points"][connection["point_a"]]
+        p2 = clusters[connection["cluster_b"]]["points"][connection["point_b"]]
         cv2.line(
             frame,
-            pt1,
-            pt2,
+            (int(p1["x"]), int(p1["y"])),
+            (int(p2["x"]), int(p2["y"])),
             CONNECTION_COLOR,
             LINE_WIDTH,
             cv2.LINE_AA
         )
 
 
-# =========================================================
-# VẼ ĐƯỜNG GẤP KHÚC VÀ NỐI VỚI TAM GIÁC
-# =========================================================
-
-def draw_dot_groups(
-    frame,
-    dot_groups,
-    clusters
-):
-
+def draw_dot_groups(frame, dot_groups, clusters):
     for group in dot_groups:
-        
         points = group["points"]
 
-        # =================================================
-        # 1. VẼ 3 ĐƯỜNG GẤP KHÚC (NỐI 4 CHẤM)
-        # =================================================
-
         for i in range(3):
-
-            pt1 = (
-                int(points[i]["x"]),
-                int(points[i]["y"])
-            )
-            pt2 = (
-                int(points[i + 1]["x"]),
-                int(points[i + 1]["y"])
-            )
-
             cv2.line(
                 frame,
-                pt1,
-                pt2,
+                (int(points[i]["x"]), int(points[i]["y"])),
+                (int(points[i + 1]["x"]), int(points[i + 1]["y"])),
                 COLOR,
                 LINE_WIDTH,
                 cv2.LINE_AA
             )
 
-        # =================================================
-        # 2. VẼ ĐƯỜNG NỐI VỚI TAM GIÁC (ĐÃ CỐ ĐỊNH)
-        # =================================================
-        
-        best_dot_idx = group["best_dot_idx"]
-        best_cluster_idx = group["best_cluster_idx"]
-        best_point_idx = group["best_point_idx"]
+        b_dot = group["best_dot_idx"]
+        b_cls = group["best_cluster_idx"]
+        b_pt = group["best_point_idx"]
 
-        if (
-            best_dot_idx != -1
-            and best_cluster_idx != -1
-            and best_point_idx != -1
-        ):
-
-            p_dot = points[best_dot_idx]
-            
-            p_target = clusters[
-                best_cluster_idx
-            ]["points"][
-                best_point_idx
-            ]
-
-            pt_dot = (
-                int(p_dot["x"]),
-                int(p_dot["y"])
-            )
-            
-            pt_target = (
-                int(p_target["x"]),
-                int(p_target["y"])
-            )
-
+        if b_dot != -1 and b_cls != -1 and b_pt != -1:
+            p_dot = points[b_dot]
+            p_target = clusters[b_cls]["points"][b_pt]
             cv2.line(
                 frame,
-                pt_dot,
-                pt_target,
+                (int(p_dot["x"]), int(p_dot["y"])),
+                (int(p_target["x"]), int(p_target["y"])),
                 CONNECTION_COLOR,
                 LINE_WIDTH,
                 cv2.LINE_AA
             )
 
-        # =================================================
-        # 3. VẼ 4 CHẤM
-        # =================================================
-
         for p in points:
-
-            center = (
-                int(p["x"]),
-                int(p["y"])
-            )
-
             cv2.circle(
                 frame,
-                center,
+                (int(p["x"]), int(p["y"])),
                 OUTER_POINT_RADIUS,
                 COLOR,
                 -1,
@@ -1291,372 +472,89 @@ def draw_dot_groups(
             )
 
 
-# =========================================================
-# VẼ CỤM CHÍNH
-# =========================================================
-
-def draw_cluster(
-    frame,
-    cluster
-):
-
+def draw_cluster(frame, cluster):
     points = cluster["points"]
-
-    pt1 = (
-        int(points[0]["x"]),
-        int(points[0]["y"])
-    )
-
-    pt2 = (
-        int(points[1]["x"]),
-        int(points[1]["y"])
-    )
-
-    pt3 = (
-        int(points[2]["x"]),
-        int(points[2]["y"])
-    )
-
-    triangle = np.array(
-        [
-            pt1,
-            pt2,
-            pt3
-        ],
-        dtype=np.int32
-    )
-
-    # =====================================================
-    # FILL
-    # =====================================================
+    pt1 = (int(points[0]["x"]), int(points[0]["y"]))
+    pt2 = (int(points[1]["x"]), int(points[1]["y"]))
+    pt3 = (int(points[2]["x"]), int(points[2]["y"]))
 
     if cluster["filled"]:
-
+        triangle = np.array([pt1, pt2, pt3], dtype=np.int32)
         overlay = frame.copy()
+        cv2.fillPoly(overlay, [triangle], FILL_COLOR)
+        cv2.addWeighted(overlay, FILL_ALPHA, frame, 1 - FILL_ALPHA, 0, frame)
 
-        cv2.fillPoly(
-            overlay,
-            [triangle],
-            FILL_COLOR
-        )
-
-        cv2.addWeighted(
-            overlay,
-            FILL_ALPHA,
-            frame,
-            1 - FILL_ALPHA,
-            0,
-            frame
-        )
-
-    # =====================================================
-    # 3 CẠNH
-    # =====================================================
-
-    cv2.line(
-        frame,
-        pt1,
-        pt2,
-        COLOR,
-        LINE_WIDTH,
-        cv2.LINE_AA
-    )
-
-    cv2.line(
-        frame,
-        pt2,
-        pt3,
-        COLOR,
-        LINE_WIDTH,
-        cv2.LINE_AA
-    )
-
-    cv2.line(
-        frame,
-        pt3,
-        pt1,
-        COLOR,
-        LINE_WIDTH,
-        cv2.LINE_AA
-    )
-
-    # =====================================================
-    # 3 ĐIỂM
-    # =====================================================
+    cv2.line(frame, pt1, pt2, COLOR, LINE_WIDTH, cv2.LINE_AA)
+    cv2.line(frame, pt2, pt3, COLOR, LINE_WIDTH, cv2.LINE_AA)
+    cv2.line(frame, pt3, pt1, COLOR, LINE_WIDTH, cv2.LINE_AA)
 
     for p in points:
-
-        center = (
-            int(p["x"]),
-            int(p["y"])
-        )
-
         cv2.circle(
             frame,
-            center,
+            (int(p["x"]), int(p["y"])),
             POINT_RADIUS,
             COLOR,
             -1,
             cv2.LINE_AA
         )
 
-
-# =========================================================
-# MAIN
-# =========================================================
-
 def main():
-
-    # =====================================================
-    # TẠO CỤM CHÍNH
-    # =====================================================
-
     clusters = create_clusters()
+    connections = create_connections(clusters)
+    dot_groups = create_dot_groups(clusters)
 
-    # =====================================================
-    # TẠO MẠNG CHÍNH
-    # =====================================================
+    filled_count = sum(1 for cluster in clusters if cluster["filled"])
 
-    connections = create_connections(
-        clusters
-    )
+    print("==============================================")
+    print("ĐANG TẠO VIDEO (PHIÊN BẢN TỐI GIẢN)")
+    print("==============================================")
+    print(f"Kích thước          : {WIDTH} x {HEIGHT}")
+    print(f"FPS                 : {FPS}")
+    print(f"Thời lượng          : {DURATION} giây")
+    print(f"Điểm chính          : {NUM_POINTS}")
+    print(f"Cụm chính           : {NUM_CLUSTERS}")
+    print(f"Connection chính    : {len(connections)}")
+    print(f"Tam giác chính fill : {filled_count}")
+    print(f"Nhóm gấp khúc (4ch) : {len(dot_groups)}")
+    print("Mạng chính          : LIÊN THÔNG")
+    print("==============================================\n")
 
-    # =====================================================
-    # TẠO NHÓM ĐƯỜNG GẤP KHÚC
-    # =====================================================
-
-    dot_groups = create_dot_groups(
-        clusters
-    )
-
-    # =====================================================
-    # THỐNG KÊ
-    # =====================================================
-
-    filled_count = sum(
-        1
-        for cluster in clusters
-        if cluster["filled"]
-    )
-
-    print(
-        "=============================================="
-    )
-
-    print(
-        "ĐANG TẠO VIDEO"
-    )
-
-    print(
-        "=============================================="
-    )
-
-    print(
-        f"Kích thước          : "
-        f"{WIDTH} x {HEIGHT}"
-    )
-
-    print(
-        f"FPS                 : "
-        f"{FPS}"
-    )
-
-    print(
-        f"Thời lượng          : "
-        f"{DURATION} giây"
-    )
-
-    print(
-        f"Điểm chính          : "
-        f"{NUM_POINTS}"
-    )
-
-    print(
-        f"Cụm chính           : "
-        f"{NUM_CLUSTERS}"
-    )
-
-    print(
-        f"Connection chính    : "
-        f"{len(connections)}"
-    )
-
-    print(
-        f"Tam giác chính fill : "
-        f"{filled_count}"
-    )
-    
-    print(
-        f"Nhóm gấp khúc (4ch) : "
-        f"{len(dot_groups)}"
-    )
-
-    print(
-        "Mạng chính          : LIÊN THÔNG"
-    )
-
-    print(
-        "=============================================="
-    )
-
-    print()
-
-    # =====================================================
-    # VIDEO WRITER
-    # =====================================================
-
-    fourcc = cv2.VideoWriter_fourcc(
-        *"mp4v"
-    )
-
-    out = cv2.VideoWriter(
-        OUTPUT_FILE,
-        fourcc,
-        FPS,
-        (
-            WIDTH,
-            HEIGHT
-        )
-    )
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    out = cv2.VideoWriter(OUTPUT_FILE, fourcc, FPS, (WIDTH, HEIGHT))
 
     if not out.isOpened():
-
-        print(
-            "LỖI: Không thể tạo video!"
-        )
-
+        print("LỖI: Không thể tạo video!")
         return
 
-    # =====================================================
-    # RENDER
-    # =====================================================
+    total_frames = FPS * DURATION
 
-    total_frames = (
-        FPS * DURATION
-    )
-
-    for frame_number in range(
-        total_frames
-    ):
-
-        # =================================================
-        # NỀN
-        # =================================================
-
-        frame = np.full(
-            (
-                HEIGHT,
-                WIDTH,
-                3
-            ),
-            BG_COLOR,
-            dtype=np.uint8
-        )
-
-        # =================================================
-        # UPDATE CỤM CHÍNH
-        # =================================================
+    for frame_number in range(total_frames):
+        frame = np.full((HEIGHT, WIDTH, 3), BG_COLOR, dtype=np.uint8)
 
         for cluster in clusters:
-
-            update_cluster(
-                cluster,
-                frame_number
-            )
-
-        # =================================================
-        # UPDATE NHÓM ĐƯỜNG GẤP KHÚC
-        # =================================================
+            update_cluster(cluster, frame_number)
 
         for group in dot_groups:
+            update_dot_group(group)
 
-            update_dot_group(
-                group
-            )
-
-        # =================================================
-        # VẼ CONNECTION
-        # =================================================
-
-        draw_connections(
-            frame,
-            clusters,
-            connections
-        )
-
-        # =================================================
-        # VẼ CỤM CHÍNH
-        # =================================================
+        draw_connections(frame, clusters, connections)
 
         for cluster in clusters:
+            draw_cluster(frame, cluster)
 
-            draw_cluster(
-                frame,
-                cluster
-            )
-            
-        # =================================================
-        # VẼ NHÓM ĐƯỜNG GẤP KHÚC VÀ CONNECTION
-        # =================================================
+        draw_dot_groups(frame, dot_groups, clusters)
 
-        draw_dot_groups(
-            frame,
-            dot_groups,
-            clusters
-        )
-
-        # =================================================
-        # GHI VIDEO
-        # =================================================
-
-        out.write(
-            frame
-        )
-
-        # =================================================
-        # PROGRESS
-        # =================================================
+        out.write(frame)
 
         if frame_number % FPS == 0:
-
-            second = (
-                frame_number // FPS
-            )
-
-            print(
-                f"Đang render: "
-                f"{second}/{DURATION} giây"
-            )
-
-    # =====================================================
-    # RELEASE
-    # =====================================================
+            print(f"Đang render: {frame_number // FPS}/{DURATION} giây")
 
     out.release()
+    print("\n==============================================")
+    print("HOÀN THÀNH!")
+    print("==============================================")
+    print(f"File: {OUTPUT_FILE}")
 
-    print()
-
-    print(
-        "=============================================="
-    )
-
-    print(
-        "HOÀN THÀNH!"
-    )
-
-    print(
-        "=============================================="
-    )
-
-    print(
-        f"File: {OUTPUT_FILE}"
-    )
-
-
-# =========================================================
-# CHẠY
-# =========================================================
 
 if __name__ == "__main__":
-
     main()
